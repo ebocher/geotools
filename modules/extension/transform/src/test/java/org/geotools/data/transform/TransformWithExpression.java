@@ -16,8 +16,6 @@
  */
 package org.geotools.data.transform;
 
-import static org.junit.Assert.assertEquals;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +29,7 @@ import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.filter.FilterFactoryImpl;
 import org.geotools.filter.IllegalFilterException;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.locationtech.jts.geom.Geometry;
@@ -57,7 +56,36 @@ public class TransformWithExpression {
     }
 
     @Test
-    public void testIThenElse4()
+    public void testIThenElse1()
+            throws IllegalFilterException, SchemaException, ParseException, IOException {
+        MemoryDataStore memory = new MemoryDataStore();
+        SimpleFeatureType type =
+                DataUtilities.createType(
+                        "testSchema", "name:String,gid:Integer,*the_geom:Geometry");
+        WKTReader reader = new WKTReader();
+        Geometry geom1 = reader.read("LINESTRING(0 0 0, 10 10 10)");
+        SimpleFeature feature1 =
+                SimpleFeatureBuilder.build(type, new Object[] {"testFeature1", 1, geom1}, null);
+        memory.addFeature(feature1);
+        List<Definition> definitions = new ArrayList<Definition>();
+        Function if_ = ff.function("equalto", ff.property("gid"), ff.literal(1));
+        Function then = ff.function("buffer", ff.property("the_geom"), ff.literal(20));
+        Function if_then_else = ff.function("if_then_else", if_, then, ff.property("the_geom"));
+        definitions.add(new Definition("THE_GEOM", if_then_else));
+        SimpleFeatureSource transformed =
+                TransformFactory.transform(
+                        memory.getFeatureSource("testSchema"), "OUTPUT_TABLE_TEST_F", definitions);
+        SimpleFeatureCollection simpleFeatureCollection = transformed.getFeatures();
+        try (SimpleFeatureIterator features = simpleFeatureCollection.features()) {
+            Assert.assertTrue(features.hasNext());
+            SimpleFeature feature = features.next();
+            Geometry geom = (Geometry) feature.getDefaultGeometry();
+            Assert.assertTrue(geom instanceof Polygon);
+        }
+    }
+
+    @Test
+    public void testIThenElse2()
             throws IllegalFilterException, SchemaException, ParseException, IOException {
         MemoryDataStore memory = new MemoryDataStore();
         SimpleFeatureType type =
@@ -68,33 +96,24 @@ public class TransformWithExpression {
         SimpleFeature feature1 =
                 SimpleFeatureBuilder.build(type, new Object[] {"testFeature1", 1, geom1}, null);
         Geometry geom2 = reader.read("LINESTRING(0 0 0, 10 10 10)");
-        SimpleFeature feature2 =
-                SimpleFeatureBuilder.build(type, new Object[] {"testFeature2", 2, geom2}, null);
-        ArrayList<SimpleFeature> dataFeatures = new ArrayList<>();
         memory.addFeature(feature1);
-        memory.addFeature(feature2);
         List<Definition> definitions = new ArrayList<Definition>();
-        Function if_ = ff.function("equalto", ff.property("gid"), ff.literal(2));
-        Function then = ff.function("buffer", ff.property("the_geom"), ff.literal(20));
+        Function if_ = ff.function("equalto", ff.property("gid"), ff.literal(1));
+        Function then =
+                ff.function(
+                        "geomFromWKT",
+                        ff.literal("POLYGON ((150 330, 220 330, 220 230, 150 230, 150 330))"));
         Function if_then_else = ff.function("if_then_else", if_, then, ff.property("the_geom"));
         definitions.add(new Definition("THE_GEOM", if_then_else));
         SimpleFeatureSource transformed =
                 TransformFactory.transform(
                         memory.getFeatureSource("testSchema"), "OUTPUT_TABLE_TEST_F", definitions);
         SimpleFeatureCollection simpleFeatureCollection = transformed.getFeatures();
-        SimpleFeatureIterator features = simpleFeatureCollection.features();
-        try {
-            int nbPoint = 0;
-            while (features.hasNext()) {
-                SimpleFeature feature = features.next();
-                Geometry geom = (Geometry) feature.getDefaultGeometry();
-                if (geom instanceof Polygon) {
-                    nbPoint++;
-                }
-            }
-            assertEquals(1, nbPoint);
-        } finally {
-            features.close();
+        try (SimpleFeatureIterator features = simpleFeatureCollection.features()) {
+            Assert.assertTrue(features.hasNext());
+            SimpleFeature feature = features.next();
+            Geometry geom = (Geometry) feature.getDefaultGeometry();
+            Assert.assertTrue(geom instanceof Polygon);
         }
     }
 }
