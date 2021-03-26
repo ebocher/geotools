@@ -16,9 +16,11 @@
  */
 package org.geotools.filter;
 
+import org.junit.AfterClass;
 import static org.junit.Assert.assertThrows;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.opengis.filter.expression.Function;
 
@@ -29,9 +31,21 @@ import org.opengis.filter.expression.Function;
  */
 public class AndFunctionTest {
 
+    static FilterFactoryImpl ff;
+
+    @BeforeClass
+    public static void setUpBeforeClass() throws Exception {
+        ff = new FilterFactoryImpl();
+    }
+
+    @AfterClass
+    public static void tearDownAfterClass() throws Exception {
+        ff = null;
+    }
+    
+    
     @Test
     public void testAndFunction1() throws IllegalFilterException {
-        FilterFactoryImpl ff = new FilterFactoryImpl();
         Function equalsTo = ff.function("equalTo", ff.literal("string1"), ff.literal("string1"));
         Function andFunction = ff.function("and", equalsTo, equalsTo);
         Assert.assertTrue((Boolean) andFunction.evaluate(new Object()));
@@ -39,7 +53,6 @@ public class AndFunctionTest {
 
     @Test
     public void testAndFunction2() throws IllegalFilterException {
-        FilterFactoryImpl ff = new FilterFactoryImpl();
         Function equalsTo_left =
                 ff.function("equalTo", ff.literal("string1"), ff.literal("string1"));
         Function equalsTo_right =
@@ -53,7 +66,6 @@ public class AndFunctionTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> {
-                    FilterFactoryImpl ff = new FilterFactoryImpl();
                     Function abs_left = ff.function("abs", ff.literal(-12));
                     Function equalsTo_right =
                             ff.function("equalTo", ff.literal("string1"), ff.literal("string2"));
@@ -64,7 +76,6 @@ public class AndFunctionTest {
 
     @Test
     public void testAndFunction4() throws IllegalFilterException {
-        FilterFactoryImpl ff = new FilterFactoryImpl();
         Function geom =
                 ff.function(
                         "geomFromWKT",
@@ -79,7 +90,6 @@ public class AndFunctionTest {
 
     @Test
     public void testAndFunction5() throws IllegalFilterException {
-        FilterFactoryImpl ff = new FilterFactoryImpl();
         Function geom =
                 ff.function(
                         "geomFromWKT",
